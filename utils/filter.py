@@ -35,29 +35,3 @@ class GaussianBlur2D(nn.Module):
 
         return x
 
-
-class CRFSmooth2D(nn.Module):
-
-    def __init__(self, radius: int = 1, sigma_1: float = 0.5, sigma_2: float = 0.5):
-        super(CRFSmooth2D, self).__init__()
-        self.radius = radius
-        self.sigma_1 = sigma_1  # Spatial standard deviation
-        self.sigma_2 = sigma_2  # Pixel value standard deviation
-
-    def forward(self, labels: Tensor, inputs: Tensor, *args):
-        num_classes = labels.shape[1]
-        kernel = gaussian_kernel(radius=self.radius, sigma=self.sigma_1, device=labels.device.type)
-        result = torch.zeros_like(labels)
-
-        for k in range(num_classes):
-            class_probs = labels[:, k].unsqueeze(1)
-            class_mean = torch.mean(inputs * class_probs, dim=(2, 3), keepdim=True) / \
-                torch.add(torch.mean(class_probs, dim=(2, 3), keepdim=True), 1e-5)
-            diff = (inputs - class_mean).pow(2).sum(dim=1).unsqueeze(1)
-            weights = torch.exp(diff.pow(2).mul(-1 / self.sigma_2 ** 2))
-
-            numerator = F.conv2d(class_probs * weights, kernel, padding=self.radius)
-            denominator = F.conv2d(weights, kernel, padding=self.radius) + 1e-6
-            result[:, k:k+1] = numerator / denominator
-
-        return result

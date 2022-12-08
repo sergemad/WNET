@@ -7,8 +7,8 @@ class Config():
         self.test_batch_size = 1
         self.verbose_testing = True
 
-        self.k = 64 # Number of classes
-        self.num_epochs = 32 #250 for real
+        self.k = 30 #64 Number of classes
+        self.num_epochs = 10 #250 for real
         self.data_dir = "./VOC2007/JPEGImages"
         self.showdata = False # Debug the data augmentation by showing the data we're training on.
 
@@ -26,6 +26,5 @@ class Config():
         self.showSegmentationProgress = True
         self.segmentationProgressDir = './progress/'
 
-        self.variationalTranslation = 0 # Pixels, 0 for off. 1 works fine
 
         self.saveModel = True

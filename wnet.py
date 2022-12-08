@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from config import Config
+from crfseg import CRF
 
 config = Config()
 
@@ -64,7 +65,7 @@ class U_Net(nn.Module):
         
         decoder_out_sizes = [int(x/2) for x in decoder]
         self.dec_transpose_layers = nn.ModuleList(
-            [nn.ConvTranspose2d(channels, channels, 2, stride=2) for channels in decoder]) # Stride of 2 makes it right size
+            [nn.ConvTranspose2d(channels, channels, 2, stride=2) for channels in decoder]) 
         self.dec_modules = nn.ModuleList(
             [ConvModule(3*channels_out, channels_out) for channels_out in decoder_out_sizes])
         self.last_dec_transpose_layer = nn.ConvTranspose2d(128, 128, 2, stride=2)
@@ -121,18 +122,25 @@ class WNet(nn.Module):
         self.U_decoder = U_Net(input_channels=config.k, encoder=config.encoderLayerSizes,
                                     decoder=config.decoderLayerSizes, output_channels=3)
         #self.sigmoid = nn.Sigmoid()
+        self.crf = CRF(n_spatial_dims=2)
 
     def forward_encoder(self, x):
-        x9 = self.U_encoder(x)
-        segmentations = self.softmax(x9)
+        x_res = self.U_encoder(x)
+        segmentations = self.softmax(x_res)
         return segmentations
+    
+    def forward_enc_crf(self, x):
+        segmentations = self.forward_encoder(x)
+        crf_seg = self.crf(segmentations)
+        x_prime       = self.forward_decoder(segmentations)
+        return segmentations, crf_seg, x_prime
 
     def forward_decoder(self, segmentations):
-        x18 = self.U_decoder(segmentations)
-        reconstructions = x18 #self.sigmoid(x18)
+        x_res = self.U_decoder(segmentations)
+        reconstructions = x_res 
         return reconstructions
 
     def forward(self, x): # x is (3 channels 224x224)
         segmentations = self.forward_encoder(x)
-        x_prime       = self.forward_decoder(segmentations)
-        return segmentations, x_prime
+        reconstruction       = self.forward_decoder(segmentations)
+        return segmentations, reconstruction
